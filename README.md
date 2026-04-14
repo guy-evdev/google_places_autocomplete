@@ -12,25 +12,22 @@ and Linux.
 
 Animated overview:
 
-![Package example](assets/readme/example.gif)
+<p>
+  <img src="assets/readme/example.gif" alt="Package example" width="320" />
+</p>
 
 Key flows:
 
-Inline field
+<p>
+  <img src="assets/readme/text_field_mode.png" alt="Inline field mode" width="220" />
+  <img src="assets/readme/dialog_mode.png" alt="Dialog mode" width="220" />
+  <img src="assets/readme/fullscreen_mode.png" alt="Fullscreen mode" width="220" />
+  <img src="assets/readme/rich_result.png" alt="Rich result payload" width="220" />
+</p>
 
-![Inline field mode](assets/readme/text_field_mode.png)
-
-Dialog launcher
-
-![Dialog mode](assets/readme/dialog_mode.png)
-
-Fullscreen launcher
-
-![Fullscreen mode](assets/readme/fullscreen_mode.png)
-
-Rich result payload
-
-![Rich result payload](assets/readme/rich_result.png)
+<p>
+  Inline field, dialog launcher, fullscreen launcher, and rich result payload.
+</p>
 
 ## Features
 
