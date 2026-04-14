@@ -1,0 +1,24 @@
+# Dart / Flutter
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub/
+pubspec.lock
+build/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# macOS
+.DS_Store
+
+# Flutter example ephemeral artifacts
+example/.dart_tool/
+example/build/
+example/.idea/
+example/**/*.iml
+example/**/.DS_Store
+example/ios/Flutter/ephemeral/

@@ -1,2 +1,262 @@
 # google_places_autocomplete
-Cross-platform Google Places autocomplete Flutter widgets and clients built on Places API (New).
+
+Cross-platform Google Places autocomplete for Flutter, built on Places API (New).
+
+The package includes package-owned request and response models, a
+cross-platform `PlacesClient`, and autocomplete widgets for inline, form,
+dialog, and fullscreen flows. The widget layer is locale-aware, RTL-friendly,
+and designed to work consistently across Android, iOS, web, macOS, Windows,
+and Linux.
+
+## Preview
+
+Animated overview:
+
+![Package example](assets/readme/example.gif)
+
+Key flows:
+
+Inline field
+
+![Inline field mode](assets/readme/text_field_mode.png)
+
+Dialog launcher
+
+![Dialog mode](assets/readme/dialog_mode.png)
+
+Fullscreen launcher
+
+![Fullscreen mode](assets/readme/fullscreen_mode.png)
+
+Rich result payload
+
+![Rich result payload](assets/readme/rich_result.png)
+
+## Features
+
+- Places API (New) autocomplete
+- Optional place-details fetch on selection
+- Text search and nearby search client APIs
+- Inline field, dialog launcher, and fullscreen launcher modes
+- Customizable strings and `InputDecoration`
+- Locale support with `languageCode` and `regionCode`
+- Rich field-mask control with `PlaceField` and `PlaceFieldPresets`
+
+## Installation
+
+Add the package to your `pubspec.yaml` file:
+
+```yaml
+dependencies:
+  google_places_autocomplete: latest_version
+```
+
+Then create a client with your Google Maps Platform API key:
+
+```dart
+final client = PlacesClient(
+  apiKey: const String.fromEnvironment('GOOGLE_MAPS_API_KEY'),
+);
+```
+
+Official Google docs:
+- [Places API (New)](https://developers.google.com/maps/documentation/places/web-service)
+- [Place Autocomplete (New)](https://developers.google.com/maps/documentation/places/web-service/place-autocomplete)
+- [Place Details (New)](https://developers.google.com/maps/documentation/places/web-service/place-details)
+
+On web, the package uses the Google Maps JavaScript Places library behind the
+same `PlacesClient` API.
+
+## Minimal Example
+
+```dart
+import 'package:flutter/material.dart';
+import 'package:google_places_autocomplete/google_places_autocomplete.dart';
+
+class MinimalPlacesField extends StatefulWidget {
+  const MinimalPlacesField({super.key});
+
+  @override
+  State<MinimalPlacesField> createState() => _MinimalPlacesFieldState();
+}
+
+class _MinimalPlacesFieldState extends State<MinimalPlacesField> {
+  final _client = PlacesClient(
+    apiKey: const String.fromEnvironment('GOOGLE_MAPS_API_KEY'),
+  );
+
+  @override
+  void dispose() {
+    _client.close();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PlacesAutocompleteField(
+      client: _client,
+      onSelection: (selection) {
+        debugPrint(selection.displayText);
+      },
+    );
+  }
+}
+```
+
+## Common Widget Example
+
+```dart
+final controller = PlacesAutocompleteController();
+
+PlacesAutocompleteField(
+  client: client,
+  controller: controller,
+  fieldMode: PlacesAutocompleteFieldMode.inline,
+  strings: const PlacesStrings(
+    searchHint: 'Search for a place',
+  ),
+  decoration: const InputDecoration(
+    labelText: 'Place',
+    border: OutlineInputBorder(),
+  ),
+  languageCode: 'en',
+  regionCode: 'us',
+  includedPrimaryTypes: const <String>['restaurant', 'cafe'],
+  includedRegionCodes: const <String>['us'],
+  fetchPlaceDetailsOnSelection: true,
+  selectionFields: PlaceFieldPresets.rich,
+  onSelection: (selection) {
+    debugPrint(selection.displayText);
+    debugPrint(selection.place?.formattedAddress);
+  },
+  onClearField: () {
+    debugPrint('Cleared');
+  },
+  onError: (error) {
+    debugPrint(error.toString());
+  },
+)
+```
+
+## Form Example
+
+Use `PlacesAutocompleteFormField` when autocomplete selection should
+participate in form validation and saving.
+
+```dart
+final formKey = GlobalKey<FormState>();
+
+Form(
+  key: formKey,
+  child: PlacesAutocompleteFormField(
+    client: client,
+    decoration: const InputDecoration(
+      labelText: 'Place',
+      border: OutlineInputBorder(),
+    ),
+    fetchPlaceDetailsOnSelection: true,
+    selectionFields: PlaceFieldPresets.recommended,
+    validator: (selection) {
+      if (selection == null) {
+        return 'Please choose a place';
+      }
+      return null;
+    },
+    onSaved: (selection) {
+      debugPrint(selection?.placeId);
+    },
+  ),
+)
+```
+
+## Field Options
+
+`PlacesAutocompleteField` supports the following public options:
+
+```dart
+PlacesAutocompleteField(
+  key: key,
+  client: client,
+  controller: controller,
+  decoration: decoration,
+  strings: strings,
+  languageCode: languageCode,
+  regionCode: regionCode,
+  locationBias: locationBias,
+  locationRestriction: locationRestriction,
+  includedPrimaryTypes: includedPrimaryTypes,
+  includedRegionCodes: includedRegionCodes,
+  includePureServiceAreaBusinesses: includePureServiceAreaBusinesses,
+  fetchPlaceDetailsOnSelection: fetchPlaceDetailsOnSelection,
+  selectionFields: selectionFields,
+  selectionLanguageCode: selectionLanguageCode,
+  selectionRegionCode: selectionRegionCode,
+  fieldMode: fieldMode,
+  onSelection: onSelection,
+  onClearField: onClearField,
+  onError: onError,
+  maxSuggestions: maxSuggestions,
+  enabled: enabled,
+  autofocus: autofocus,
+  showPoweredByGoogle: showPoweredByGoogle,
+  suggestionBuilder: suggestionBuilder,
+)
+```
+
+In practice:
+- `fieldMode` can be `inline`, `dialog`, or `fullscreen`
+- `includedPrimaryTypes` uses Google Places primary type strings such as `'restaurant'`, `'cafe'`, or `'(cities)'`
+- `selectionFields` controls which fields are fetched when details loading is enabled
+- if you pass a custom `InputDecoration`, the package preserves your styling and still keeps the clear action available
+
+Google primary type reference:
+- [includedPrimaryTypes](https://developers.google.com/maps/documentation/places/web-service/place-autocomplete#includedPrimaryTypes)
+
+## Selection Model
+
+All widget flows return a package-owned `PlaceSelection`:
+
+```dart
+class PlaceSelection {
+  final PlaceSuggestion suggestion;
+  final PlaceData? place;
+}
+```
+
+This means:
+- `suggestion` is always available
+- `place` is available when `fetchPlaceDetailsOnSelection` is enabled
+
+## Overlay Usage
+
+Use `PlacesAutocompleteOverlay.show()` when search should happen in a dedicated
+route instead of inline:
+
+```dart
+final selection = await PlacesAutocompleteOverlay.show(
+  context,
+  client: client,
+  mode: PlacesAutocompleteOverlayMode.fullscreen,
+  languageCode: 'en',
+  regionCode: 'us',
+  fetchPlaceDetailsOnSelection: true,
+  selectionFields: PlaceFieldPresets.rich,
+);
+```
+
+## Example App
+
+The `/example` app demonstrates:
+- inline autocomplete
+- form integration
+- dialog and fullscreen launcher modes
+- rich place-details loading
+- custom strings
+- locale switching
+- RTL layout
+
+Run it with:
+
+```sh
+flutter run --dart-define=GOOGLE_MAPS_API_KEY=your_key_here
+```
