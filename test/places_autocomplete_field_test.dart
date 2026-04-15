@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_places_sdk_flutter/google_places_sdk_flutter.dart';
@@ -57,6 +59,23 @@ class _FakeBackend implements PlacesBackend {
   @override
   Future<List<PlaceData>> searchText(TextSearchRequest request) async =>
       const <PlaceData>[];
+}
+
+class _RecordingNavigatorObserver extends NavigatorObserver {
+  int pushCount = 0;
+  int popCount = 0;
+
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    pushCount++;
+    super.didPush(route, previousRoute);
+  }
+
+  @override
+  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    popCount++;
+    super.didPop(route, previousRoute);
+  }
 }
 
 void main() {
@@ -294,6 +313,116 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Coffee Lab'), findsOneWidget);
+    },
+  );
+
+  testWidgets('fullscreen overlay uses the root navigator by default', (
+    tester,
+  ) async {
+    final client = PlacesClient.testing(
+      apiKey: 'test',
+      backend: _FakeBackend(),
+    );
+    final rootObserver = _RecordingNavigatorObserver();
+    final nestedObserver = _RecordingNavigatorObserver();
+    late BuildContext nestedContext;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        navigatorObservers: <NavigatorObserver>[rootObserver],
+        home: Navigator(
+          observers: <NavigatorObserver>[nestedObserver],
+          onGenerateRoute: (_) => MaterialPageRoute<void>(
+            builder: (context) {
+              nestedContext = context;
+              return Scaffold(
+                body: Center(
+                  child: FilledButton(
+                    onPressed: () {
+                      unawaited(
+                        PlacesAutocompleteOverlay.show(
+                          nestedContext,
+                          client: client,
+                          mode: PlacesAutocompleteOverlayMode.fullscreen,
+                        ),
+                      );
+                    },
+                    child: const Text('Open overlay'),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+
+    final initialRootPushes = rootObserver.pushCount;
+    final initialNestedPushes = nestedObserver.pushCount;
+
+    await tester.tap(find.text('Open overlay'));
+    await tester.pumpAndSettle();
+
+    expect(rootObserver.pushCount, initialRootPushes + 1);
+    expect(nestedObserver.pushCount, initialNestedPushes);
+  });
+
+  testWidgets(
+    'dialog selection dismisses the dialog instead of popping the nested navigator',
+    (tester) async {
+      final client = PlacesClient.testing(
+        apiKey: 'test',
+        backend: _FakeBackend(),
+      );
+      final rootObserver = _RecordingNavigatorObserver();
+      final nestedObserver = _RecordingNavigatorObserver();
+      PlaceSelection? result;
+      late BuildContext nestedContext;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          navigatorObservers: <NavigatorObserver>[rootObserver],
+          home: Navigator(
+            observers: <NavigatorObserver>[nestedObserver],
+            onGenerateRoute: (_) => MaterialPageRoute<void>(
+              builder: (context) {
+                nestedContext = context;
+                return Scaffold(
+                  body: Center(
+                    child: FilledButton(
+                      onPressed: () async {
+                        result = await PlacesAutocompleteOverlay.show(
+                          nestedContext,
+                          client: client,
+                          mode: PlacesAutocompleteOverlayMode.dialog,
+                        );
+                      },
+                      child: const Text('Open dialog'),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      );
+
+      final initialNestedPops = nestedObserver.popCount;
+
+      await tester.tap(find.text('Open dialog'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextField), 'cof');
+      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Coffee Lab'));
+      await tester.pumpAndSettle();
+
+      expect(result, isNotNull);
+      expect(result!.suggestion.placeId, 'place-1');
+      expect(nestedObserver.popCount, initialNestedPops);
+      expect(find.byType(Dialog), findsNothing);
     },
   );
 }

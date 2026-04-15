@@ -1,3 +1,9 @@
+## 0.3.1 - 2026-04-15
+
+- Fixed fullscreen overlay presentation so it uses the root navigator and opens truly fullscreen inside nested navigator setups such as `go_router` shells.
+- Fixed dialog selection dismissal so it closes the dialog route instead of popping the underlying page.
+- Improved dialog overlay layout constraints and route teardown stability.
+
 ## 0.3.0 - 2026-04-15
 
 - Added typed address support through `PlacePostalAddress` and `PlaceAddressComponent`.

@@ -103,6 +103,7 @@ class PlacesAutocompleteOverlay extends StatelessWidget {
     PlacesAutocompleteController? controller,
     String initialText = '',
     PlacesAutocompleteOverlayMode mode = PlacesAutocompleteOverlayMode.dialog,
+    bool useRootNavigator = true,
     PlacesStrings strings = const PlacesStrings(),
     String? title,
     String? languageCode,
@@ -126,7 +127,7 @@ class PlacesAutocompleteOverlay extends StatelessWidget {
         ? PlacesAutocompleteController(initialText: initialText)
         : null;
     final effectiveController = controller ?? ownedController!;
-    final navigator = Navigator.of(context);
+    final navigator = Navigator.of(context, rootNavigator: useRootNavigator);
     final child = PlacesAutocompleteOverlay(
       client: client,
       controller: effectiveController,
@@ -166,15 +167,23 @@ class PlacesAutocompleteOverlay extends StatelessWidget {
 
       return await showDialog<PlaceSelection>(
         context: context,
-        builder: (_) => Dialog(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: SizedBox(width: 560, child: child),
+        useRootNavigator: useRootNavigator,
+        builder: (dialogContext) => Dialog(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: 560,
+              maxHeight: MediaQuery.sizeOf(dialogContext).height * 0.8,
+            ),
+            child: Padding(padding: const EdgeInsets.all(16), child: child),
           ),
         ),
       );
     } finally {
-      ownedController?.dispose();
+      if (ownedController != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          ownedController.dispose();
+        });
+      }
     }
   }
 
@@ -211,7 +220,6 @@ class PlacesAutocompleteOverlay extends StatelessWidget {
     }
 
     return Column(
-      mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
         Text(
@@ -219,7 +227,7 @@ class PlacesAutocompleteOverlay extends StatelessWidget {
           style: Theme.of(context).textTheme.titleLarge,
         ),
         const SizedBox(height: 16),
-        field,
+        Flexible(child: field),
       ],
     );
   }
