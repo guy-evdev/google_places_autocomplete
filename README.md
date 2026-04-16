@@ -1,6 +1,8 @@
 # Google Places SDK Flutter
 
-[![CI](https://github.com/guy-evdev/google_places_autocomplete/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/guy-evdev/google_places_autocomplete/actions/workflows/ci.yml)
+[![pub package](https://img.shields.io/pub/v/google_places_sdk_flutter.svg)](https://pub.dev/packages/google_places_sdk_flutter)
+[![CI](https://github.com/guy-evdev/google_places_sdk_flutter/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/guy-evdev/google_places_sdk_flutter/actions/workflows/ci.yml)
+
 
 Cross-platform Google Places client and widget toolkit for Flutter, built on Places API (New).
 
