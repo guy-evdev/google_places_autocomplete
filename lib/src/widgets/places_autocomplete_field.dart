@@ -160,6 +160,7 @@ class _PlacesAutocompleteFieldState extends State<PlacesAutocompleteField> {
   Object? _error;
   bool _loading = false;
   bool _searchUiVisible = false;
+  bool _suggestionPointerDown = false;
   int _searchGeneration = 0;
 
   PlacesAutocompleteController get _controller =>
@@ -217,6 +218,9 @@ class _PlacesAutocompleteFieldState extends State<PlacesAutocompleteField> {
 
   void _onFocusChanged() {
     if (_controller.focusNode.hasFocus || _isLauncherMode) {
+      return;
+    }
+    if (_suggestionPointerDown) {
       return;
     }
     _closeSearchUi();
@@ -456,31 +460,45 @@ class _PlacesAutocompleteFieldState extends State<PlacesAutocompleteField> {
             Material(
               color: theme.colorScheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(12),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  for (final suggestion in _suggestions)
-                    ListTile(
-                      onTap: () => _handleSuggestionTap(suggestion),
-                      title:
-                          widget.suggestionBuilder?.call(context, suggestion) ??
-                          Text(suggestion.primaryText.text),
-                      subtitle: suggestion.secondaryText == null
-                          ? null
-                          : Text(suggestion.secondaryText!.text),
-                      trailing: suggestion.distanceMeters == null
-                          ? null
-                          : Text('${suggestion.distanceMeters} m'),
-                    ),
-                  if (widget.showPoweredByGoogle)
-                    const Padding(
-                      padding: EdgeInsets.fromLTRB(16, 4, 16, 12),
-                      child: Align(
-                        alignment: AlignmentDirectional.centerEnd,
-                        child: _PoweredByGoogleAttribution(),
+              child: Listener(
+                onPointerDown: (_) {
+                  _suggestionPointerDown = true;
+                },
+                onPointerUp: (_) {
+                  _suggestionPointerDown = false;
+                },
+                onPointerCancel: (_) {
+                  _suggestionPointerDown = false;
+                },
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    for (final suggestion in _suggestions)
+                      ListTile(
+                        onTap: () => _handleSuggestionTap(suggestion),
+                        title:
+                            widget.suggestionBuilder?.call(
+                              context,
+                              suggestion,
+                            ) ??
+                            Text(suggestion.primaryText.text),
+                        subtitle: suggestion.secondaryText == null
+                            ? null
+                            : Text(suggestion.secondaryText!.text),
+                        trailing: suggestion.distanceMeters == null
+                            ? null
+                            : Text('${suggestion.distanceMeters} m'),
                       ),
-                    ),
-                ],
+                    if (widget.showPoweredByGoogle)
+                      const Padding(
+                        padding: EdgeInsets.fromLTRB(16, 4, 16, 12),
+                        child: Align(
+                          alignment: AlignmentDirectional.centerEnd,
+                          child: _PoweredByGoogleAttribution(),
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ),
         ],

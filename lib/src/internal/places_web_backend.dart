@@ -11,20 +11,27 @@ import '../models/place_models.dart';
 import 'backend.dart';
 
 class PlacesWebBackend implements PlacesBackend {
-  PlacesWebBackend({required this.apiKey, this.timeZoneBaseUrl})
-    : _httpClient = BrowserClient();
+  PlacesWebBackend({
+    required this.apiKey,
+    this.proxyBaseUrl,
+    this.timeZoneBaseUrl,
+  }) : _httpClient = BrowserClient();
 
   static const _mapsScriptId = 'google_places_sdk_flutter_maps_js';
+  static const _defaultPlacesBaseUrl = 'https://places.googleapis.com/v1';
   static const _defaultTimeZoneBaseUrl =
       'https://maps.googleapis.com/maps/api/timezone/json';
 
   final String apiKey;
+  final String? proxyBaseUrl;
   final String? timeZoneBaseUrl;
   final http.Client _httpClient;
   final Map<String, Object> _sessionTokens = <String, Object>{};
 
-  static Completer<Object>? _placesLibraryCompleter;
+  static Completer<JSObject>? _placesLibraryCompleter;
   static String? _loadedApiKey;
+
+  String get _placesBaseUrl => proxyBaseUrl ?? _defaultPlacesBaseUrl;
 
   @override
   Future<List<PlaceSuggestion>> autocomplete(
@@ -61,30 +68,37 @@ class PlacesWebBackend implements PlacesBackend {
 
   @override
   Future<PlaceData> fetchPlace(PlaceDetailsRequest request) async {
-    final library = await _loadPlacesLibrary();
-    final placeCtor = library.getProperty('Place'.toJS) as JSFunction;
-    final place = placeCtor.callAsConstructor<JSObject>(
-      <String, Object?>{
-            'id': request.placeId,
-            if (request.languageCode != null)
-              'requestedLanguage': request.languageCode,
-            if (request.regionCode != null)
-              'requestedRegion': request.regionCode,
-          }.jsify()!
-          as JSObject,
-    );
+    try {
+      final library = await _loadPlacesLibrary();
+      final placeCtor = library.getProperty('Place'.toJS) as JSFunction;
+      final place = placeCtor.callAsConstructor<JSObject>(
+        <String, Object?>{
+              'id': request.placeId,
+              if (request.languageCode != null)
+                'requestedLanguage': request.languageCode,
+              if (request.regionCode != null)
+                'requestedRegion': request.regionCode,
+            }.jsify()!
+            as JSObject,
+      );
 
-    final fetchFields = place.getProperty('fetchFields'.toJS) as JSFunction;
-    await (fetchFields.callAsFunction(
-              place,
-              <String, Object?>{
-                'fields': request.fields.map((field) => field.apiName).toList(),
-              }.jsify()!,
-            )
-            as JSPromise<JSAny?>)
-        .toDart;
+      final fetchFields = place.getProperty('fetchFields'.toJS) as JSFunction;
+      await (fetchFields.callAsFunction(
+                place,
+                <String, Object?>{
+                  'fields': request.fields.map(_webFieldName).toList(),
+                }.jsify()!,
+              )
+              as JSPromise<JSAny?>)
+          .toDart;
 
-    return PlaceData.fromJson(_extractPlaceMap(place, request.fields));
+      return PlaceData.fromJson(_extractPlaceMap(place, request.fields));
+    } catch (error) {
+      if (!_shouldFallbackToHttp(error)) {
+        rethrow;
+      }
+      return _fetchPlaceOverHttp(request);
+    }
   }
 
   @override
@@ -127,78 +141,92 @@ class PlacesWebBackend implements PlacesBackend {
 
   @override
   Future<List<PlaceData>> searchText(TextSearchRequest request) async {
-    final library = await _loadPlacesLibrary();
-    final placeCtor = library.getProperty('Place'.toJS) as JSFunction;
-    final requestMap = <String, Object?>{
-      'textQuery': request.textQuery,
-      'fields': request.fields.map((field) => field.apiName).toList(),
-      if (request.languageCode != null) 'language': request.languageCode,
-      if (request.regionCode != null) 'region': request.regionCode,
-      if (request.includedType != null) 'includedType': request.includedType,
-      if (request.strictTypeFiltering) 'strictTypeFiltering': true,
-      if (request.locationBias != null)
-        'locationBias': request.locationBias!.area.toWebJson(),
-      if (request.locationRestriction != null)
-        'locationRestriction': request.locationRestriction!.area.toWebJson(),
-      if (request.maxResultCount != null)
-        'maxResultCount': request.maxResultCount,
-      if (request.minRating != null) 'minRating': request.minRating,
-      if (request.openNow != null) 'openNow': request.openNow,
-      'rankPreference': _searchByTextRankPreference(
-        library,
-        request.rankPreference,
-      ),
-    };
+    try {
+      final library = await _loadPlacesLibrary();
+      final placeCtor = library.getProperty('Place'.toJS) as JSFunction;
+      final requestMap = <String, Object?>{
+        'textQuery': request.textQuery,
+        'fields': request.fields.map(_webFieldName).toList(),
+        if (request.languageCode != null) 'language': request.languageCode,
+        if (request.regionCode != null) 'region': request.regionCode,
+        if (request.includedType != null) 'includedType': request.includedType,
+        if (request.strictTypeFiltering) 'strictTypeFiltering': true,
+        if (request.locationBias != null)
+          'locationBias': request.locationBias!.area.toWebJson(),
+        if (request.locationRestriction != null)
+          'locationRestriction': request.locationRestriction!.area.toWebJson(),
+        if (request.maxResultCount != null)
+          'maxResultCount': request.maxResultCount,
+        if (request.minRating != null) 'minRating': request.minRating,
+        if (request.openNow != null) 'openNow': request.openNow,
+        'rankPreference': _searchByTextRankPreference(
+          library,
+          request.rankPreference,
+        ),
+      };
 
-    final searchByText =
-        placeCtor.getProperty('searchByText'.toJS) as JSFunction;
-    final result =
-        await (searchByText.callAsFunction(placeCtor, requestMap.jsify()!)
-                as JSPromise<JSAny?>)
-            .toDart;
+      final searchByText =
+          placeCtor.getProperty('searchByText'.toJS) as JSFunction;
+      final result =
+          await (searchByText.callAsFunction(placeCtor, requestMap.jsify()!)
+                  as JSPromise<JSAny?>)
+              .toDart;
 
-    return _extractPlaceResults(
-      result: result as JSObject,
-      fields: request.fields,
-    );
+      return _extractPlaceResults(
+        result: result as JSObject,
+        fields: request.fields,
+      );
+    } catch (error) {
+      if (!_shouldFallbackToHttp(error)) {
+        rethrow;
+      }
+      return _searchTextOverHttp(request);
+    }
   }
 
   @override
   Future<List<PlaceData>> searchNearby(NearbySearchRequest request) async {
-    final library = await _loadPlacesLibrary();
-    final placeCtor = library.getProperty('Place'.toJS) as JSFunction;
-    final requestMap = <String, Object?>{
-      'fields': request.fields.map((field) => field.apiName).toList(),
-      'locationRestriction': request.locationRestriction.area.toWebJson(),
-      if (request.languageCode != null) 'language': request.languageCode,
-      if (request.regionCode != null) 'region': request.regionCode,
-      if (request.includedTypes.isNotEmpty)
-        'includedTypes': request.includedTypes,
-      if (request.excludedTypes.isNotEmpty)
-        'excludedTypes': request.excludedTypes,
-      if (request.includedPrimaryTypes.isNotEmpty)
-        'includedPrimaryTypes': request.includedPrimaryTypes,
-      if (request.excludedPrimaryTypes.isNotEmpty)
-        'excludedPrimaryTypes': request.excludedPrimaryTypes,
-      if (request.maxResultCount != null)
-        'maxResultCount': request.maxResultCount,
-      'rankPreference': _searchNearbyRankPreference(
-        library,
-        request.rankPreference,
-      ),
-    };
+    try {
+      final library = await _loadPlacesLibrary();
+      final placeCtor = library.getProperty('Place'.toJS) as JSFunction;
+      final requestMap = <String, Object?>{
+        'fields': request.fields.map(_webFieldName).toList(),
+        'locationRestriction': request.locationRestriction.area.toWebJson(),
+        if (request.languageCode != null) 'language': request.languageCode,
+        if (request.regionCode != null) 'region': request.regionCode,
+        if (request.includedTypes.isNotEmpty)
+          'includedTypes': request.includedTypes,
+        if (request.excludedTypes.isNotEmpty)
+          'excludedTypes': request.excludedTypes,
+        if (request.includedPrimaryTypes.isNotEmpty)
+          'includedPrimaryTypes': request.includedPrimaryTypes,
+        if (request.excludedPrimaryTypes.isNotEmpty)
+          'excludedPrimaryTypes': request.excludedPrimaryTypes,
+        if (request.maxResultCount != null)
+          'maxResultCount': request.maxResultCount,
+        'rankPreference': _searchNearbyRankPreference(
+          library,
+          request.rankPreference,
+        ),
+      };
 
-    final searchNearby =
-        placeCtor.getProperty('searchNearby'.toJS) as JSFunction;
-    final result =
-        await (searchNearby.callAsFunction(placeCtor, requestMap.jsify()!)
-                as JSPromise<JSAny?>)
-            .toDart;
+      final searchNearby =
+          placeCtor.getProperty('searchNearby'.toJS) as JSFunction;
+      final result =
+          await (searchNearby.callAsFunction(placeCtor, requestMap.jsify()!)
+                  as JSPromise<JSAny?>)
+              .toDart;
 
-    return _extractPlaceResults(
-      result: result as JSObject,
-      fields: request.fields,
-    );
+      return _extractPlaceResults(
+        result: result as JSObject,
+        fields: request.fields,
+      );
+    } catch (error) {
+      if (!_shouldFallbackToHttp(error)) {
+        rethrow;
+      }
+      return _searchNearbyOverHttp(request);
+    }
   }
 
   @override
@@ -208,9 +236,9 @@ class PlacesWebBackend implements PlacesBackend {
 
   Future<JSObject> _loadPlacesLibrary() async {
     if (_placesLibraryCompleter != null) {
-      return _placesLibraryCompleter!.future as Future<JSObject>;
+      return _placesLibraryCompleter!.future;
     }
-    _placesLibraryCompleter = Completer<Object>();
+    _placesLibraryCompleter = Completer<JSObject>();
     try {
       if (_loadedApiKey != null && _loadedApiKey != apiKey) {
         throw PlacesException(
@@ -220,6 +248,7 @@ class PlacesWebBackend implements PlacesBackend {
       if (!_hasGoogleMapsImportLibrary()) {
         await _injectMapsScript();
       }
+      await _waitForImportLibrary();
       _loadedApiKey = apiKey;
       final google = web.window.getProperty('google'.toJS) as JSObject;
       final maps = google.getProperty('maps'.toJS) as JSObject;
@@ -229,11 +258,11 @@ class PlacesWebBackend implements PlacesBackend {
           await (importLibrary.callAsFunction(maps, 'places'.toJS)
                   as JSPromise<JSAny?>)
               .toDart;
-      _placesLibraryCompleter!.complete(library);
+      _placesLibraryCompleter!.complete(library as JSObject);
     } catch (error, stackTrace) {
       _placesLibraryCompleter!.completeError(error, stackTrace);
     }
-    return _placesLibraryCompleter!.future as Future<JSObject>;
+    return _placesLibraryCompleter!.future;
   }
 
   bool _hasGoogleMapsImportLibrary() {
@@ -268,6 +297,19 @@ class PlacesWebBackend implements PlacesBackend {
     );
     web.document.head!.append(script);
     await Future.any(<Future<void>>[load, error]);
+  }
+
+  Future<void> _waitForImportLibrary() async {
+    const maxAttempts = 50;
+    for (var attempt = 0; attempt < maxAttempts; attempt++) {
+      if (_hasGoogleMapsImportLibrary()) {
+        return;
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+    }
+    throw const PlacesException(
+      'Google Maps JavaScript Places library did not finish initializing.',
+    );
   }
 
   JSObject _jsifyAutocompleteRequest(
@@ -326,23 +368,17 @@ class PlacesWebBackend implements PlacesBackend {
           ((prediction.getProperty('placeId'.toJS) as JSString?)?.toDart) ?? '',
       placeResourceName:
           ((prediction.getProperty('place'.toJS) as JSString?)?.toDart) ?? '',
-      fullText: StructuredText.fromJson(_dartify(text)),
-      primaryText: StructuredText.fromJson(
+      fullText: _structuredTextFromJs(text),
+      primaryText: _structuredTextFromJs(
         structuredFormat == null
-            ? _dartify(text)
-            : _dartify(
-                (structuredFormat as JSObject).getProperty('mainText'.toJS) ??
-                    text,
-              ),
+            ? text
+            : (structuredFormat as JSObject).getProperty('mainText'.toJS) ??
+                  text,
       ),
       secondaryText: structuredFormat == null
           ? null
-          : StructuredText.fromJson(
-              _dartify(
-                (structuredFormat as JSObject).getProperty(
-                  'secondaryText'.toJS,
-                ),
-              ),
+          : _structuredTextFromJs(
+              (structuredFormat as JSObject).getProperty('secondaryText'.toJS),
             ),
       distanceMeters:
           (prediction.getProperty('distanceMeters'.toJS) as JSNumber?)
@@ -357,6 +393,45 @@ class PlacesWebBackend implements PlacesBackend {
                 ((prediction.getProperty('place'.toJS) as JSString?)?.toDart),
           },
     );
+  }
+
+  StructuredText _structuredTextFromJs(JSAny? value) {
+    if (value == null) {
+      return const StructuredText(text: '');
+    }
+    if (value.isA<JSString>()) {
+      return StructuredText(text: (value as JSString).toDart);
+    }
+    if (!value.isA<JSObject>()) {
+      return StructuredText.fromJson(_dartify(value));
+    }
+
+    final object = value as JSObject;
+    final text = ((object.getProperty('text'.toJS) as JSString?)?.toDart) ?? '';
+    final matchesValue = object.getProperty('matches'.toJS);
+    final matches = <TextMatch>[];
+
+    if (matchesValue != null && matchesValue.isA<JSObject>()) {
+      final jsMatches = matchesValue as JSObject;
+      final length =
+          (jsMatches.getProperty('length'.toJS) as JSNumber?)?.toDartInt ?? 0;
+      for (var index = 0; index < length; index++) {
+        final entry = jsMatches.getProperty(index.toJS);
+        if (entry == null || !entry.isA<JSObject>()) {
+          continue;
+        }
+        final match = entry as JSObject;
+        final startOffset =
+            (match.getProperty('startOffset'.toJS) as JSNumber?)?.toDartInt ??
+            0;
+        final endOffset =
+            (match.getProperty('endOffset'.toJS) as JSNumber?)?.toDartInt ??
+            (startOffset + 1);
+        matches.add(TextMatch(startOffset: startOffset, endOffset: endOffset));
+      }
+    }
+
+    return StructuredText(text: text, matches: matches);
   }
 
   List<PlaceData> _extractPlaceResults({
@@ -379,9 +454,9 @@ class PlacesWebBackend implements PlacesBackend {
   ) {
     final data = <String, Object?>{};
     for (final field in fields) {
-      final value = _fieldValue(place, field.apiName);
+      final value = _fieldValue(place, _webFieldName(field));
       if (value != null) {
-        data[field.apiName] = value;
+        data[field.apiName] = _normalizeWebFieldValue(field, value);
       }
     }
     final id = _fieldValue(place, 'id');
@@ -438,6 +513,12 @@ class PlacesWebBackend implements PlacesBackend {
         (value.getProperty('toJSON'.toJS) as JSFunction).callAsFunction(value),
       );
     }
+    if (value.isA<JSObject>()) {
+      final jsonValue = _jsonDecodeJsValue(value as JSObject);
+      if (jsonValue != null) {
+        return jsonValue;
+      }
+    }
     try {
       final dartified = value.dartify();
       if (dartified is Map) {
@@ -452,7 +533,150 @@ class PlacesWebBackend implements PlacesBackend {
     }
   }
 
+  Object? _jsonDecodeJsValue(JSObject value) {
+    try {
+      final json = web.window.getProperty('JSON'.toJS) as JSObject;
+      final stringify = json.getProperty('stringify'.toJS) as JSFunction?;
+      if (stringify == null) {
+        return null;
+      }
+      final encoded = stringify.callAsFunction(json, value);
+      if (encoded == null || !encoded.isA<JSString>()) {
+        return null;
+      }
+      final decoded = jsonDecode((encoded as JSString).toDart);
+      if (decoded is Map) {
+        return decoded.cast<String, Object?>();
+      }
+      if (decoded is List) {
+        return decoded.cast<Object?>();
+      }
+      return decoded;
+    } catch (_) {
+      return null;
+    }
+  }
+
   bool _hasMethod(JSObject value, String property) => value.has(property);
+
+  bool _shouldFallbackToHttp(Object error) {
+    final message = error.toString();
+    return message.contains('Unknown fields requested') ||
+        message.contains('InvalidValueError: in property fields');
+  }
+
+  Future<PlaceData> _fetchPlaceOverHttp(PlaceDetailsRequest request) async {
+    final path = request.placeId.startsWith('places/')
+        ? request.placeId
+        : 'places/${Uri.encodeComponent(request.placeId)}';
+    final response = await _get(
+      path: path,
+      fieldMask: request.detailsFieldMask,
+      queryParameters: <String, String>{
+        if (request.languageCode != null) 'languageCode': request.languageCode!,
+        if (request.regionCode != null) 'regionCode': request.regionCode!,
+        if (request.sessionToken != null)
+          'sessionToken': request.sessionToken!.value,
+      },
+    );
+    return PlaceData.fromJson(response);
+  }
+
+  Future<List<PlaceData>> _searchTextOverHttp(TextSearchRequest request) async {
+    final response = await _post(
+      path: 'places:searchText',
+      body: request.toRestJson(),
+      fieldMask: request.searchFieldMask,
+    );
+    return ((response['places'] as List?) ?? <Object?>[])
+        .whereType<Map>()
+        .map((item) => PlaceData.fromJson(item.cast<String, Object?>()))
+        .toList(growable: false);
+  }
+
+  Future<List<PlaceData>> _searchNearbyOverHttp(
+    NearbySearchRequest request,
+  ) async {
+    final response = await _post(
+      path: 'places:searchNearby',
+      body: request.toRestJson(),
+      fieldMask: request.searchFieldMask,
+    );
+    return ((response['places'] as List?) ?? <Object?>[])
+        .whereType<Map>()
+        .map((item) => PlaceData.fromJson(item.cast<String, Object?>()))
+        .toList(growable: false);
+  }
+
+  Future<Map<String, Object?>> _post({
+    required String path,
+    required Map<String, Object?> body,
+    required String fieldMask,
+  }) async {
+    final uri = _resolveUri(path);
+    final response = await _httpClient.post(
+      uri,
+      headers: _headers(fieldMask: fieldMask),
+      body: jsonEncode(body),
+    );
+    return _decode(response);
+  }
+
+  Future<Map<String, Object?>> _get({
+    required String path,
+    required String fieldMask,
+    Map<String, String> queryParameters = const <String, String>{},
+  }) async {
+    final uri = _resolveUri(path, queryParameters: queryParameters);
+    final response = await _httpClient.get(
+      uri,
+      headers: _headers(fieldMask: fieldMask),
+    );
+    return _decode(response);
+  }
+
+  Uri _resolveUri(
+    String path, {
+    Map<String, String> queryParameters = const <String, String>{},
+    bool treatPathAsAbsolute = false,
+  }) {
+    final baseUrl = treatPathAsAbsolute ? path : _placesBaseUrl;
+    final normalizedBase = baseUrl.endsWith('/')
+        ? baseUrl.substring(0, baseUrl.length - 1)
+        : baseUrl;
+    final normalizedPath = treatPathAsAbsolute
+        ? ''
+        : (path.startsWith('/') ? path.substring(1) : path);
+    return Uri.parse(
+      treatPathAsAbsolute ? normalizedBase : '$normalizedBase/$normalizedPath',
+    ).replace(
+      queryParameters: queryParameters.isEmpty ? null : queryParameters,
+    );
+  }
+
+  Map<String, String> _headers({required String fieldMask}) {
+    return <String, String>{
+      'Content-Type': 'application/json',
+      'X-Goog-Api-Key': apiKey,
+      'X-Goog-FieldMask': fieldMask,
+    };
+  }
+
+  Map<String, Object?> _decode(http.Response response) {
+    final dynamic decoded = response.body.isEmpty
+        ? <String, Object?>{}
+        : jsonDecode(response.body);
+    final body = (decoded as Map).cast<String, Object?>();
+    if (response.statusCode >= 400) {
+      final error = (body['error'] as Map?)?.cast<String, Object?>();
+      throw PlacesException(
+        (error?['message'] ?? 'Google Places request failed.') as String,
+        statusCode: response.statusCode,
+        details: body,
+      );
+    }
+    return body;
+  }
 
   List<String> _listOfStrings(JSAny? value) {
     if (value == null) {
@@ -481,6 +705,32 @@ class PlacesWebBackend implements PlacesBackend {
     final values =
         library.getProperty('SearchNearbyRankPreference'.toJS) as JSObject;
     return values.getProperty(preference.name.toUpperCase().toJS)!;
+  }
+
+  String _webFieldName(PlaceField field) {
+    return switch (field) {
+      PlaceField.googleMapsUri => 'googleMapsURI',
+      PlaceField.websiteUri => 'websiteURI',
+      PlaceField.iconMaskBaseUri => 'svgIconMaskURI',
+      PlaceField.delivery => 'hasDelivery',
+      PlaceField.dineIn => 'hasDineIn',
+      PlaceField.takeout => 'hasTakeout',
+      PlaceField.reservable => 'isReservable',
+      PlaceField.outdoorSeating => 'hasOutdoorSeating',
+      PlaceField.restroom => 'hasRestroom',
+      PlaceField.goodForChildren => 'isGoodForChildren',
+      PlaceField.goodForGroups => 'isGoodForGroups',
+      _ => field.apiName,
+    };
+  }
+
+  Object? _normalizeWebFieldValue(PlaceField field, Object? value) {
+    if (field == PlaceField.iconMaskBaseUri &&
+        value is String &&
+        value.endsWith('.svg')) {
+      return value.substring(0, value.length - 4);
+    }
+    return value;
   }
 }
 

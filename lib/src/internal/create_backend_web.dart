@@ -7,5 +7,9 @@ PlacesBackend createPlacesBackend({
   String? timeZoneBaseUrl,
   Object? httpClient,
 }) {
-  return PlacesWebBackend(apiKey: apiKey, timeZoneBaseUrl: timeZoneBaseUrl);
+  return PlacesWebBackend(
+    apiKey: apiKey,
+    proxyBaseUrl: proxyBaseUrl,
+    timeZoneBaseUrl: timeZoneBaseUrl,
+  );
 }

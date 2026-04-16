@@ -226,6 +226,7 @@ class _ExampleAppState extends State<ExampleApp> {
             onError: (error) {
               setState(() {
                 _lastError = error;
+                debugPrint(error.toString());
               });
             },
           ),
@@ -338,6 +339,7 @@ class _ExampleAppState extends State<ExampleApp> {
       onError: (error) {
         setState(() {
           _lastError = error;
+          debugPrint(error.toString());
         });
       },
     );

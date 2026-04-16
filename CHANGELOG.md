@@ -1,33 +1,35 @@
-## 0.3.2 - 2026-04-15
+## 0.3.3 - 2026-04-16
 
-- Fixed dialog sizing so autocomplete overlays shrink-wrap content more naturally instead of expanding to near fullscreen in some host app layouts.
-- Exposed `maxSuggestions` through dialog and fullscreen overlay flows and aligned its behavior with Google Autocomplete (New) limits.
-- Documented and clamped `maxSuggestions` to the upstream maximum of five predictions.
-- Corrected the Powered by Google attribution asset theme mapping.
+- Added web fallbacks for place details and search requests when the Maps JavaScript Places library rejects richer field sets.
+- Fixed Chrome/web parsing and initialization issues in the Places JavaScript backend.
+- Preserved `proxyBaseUrl` behavior for web fallback requests.
 
-## 0.3.1 - 2026-04-15
+## 0.3.2 - 2026-04-16
 
-- Fixed fullscreen overlay presentation so it uses the root navigator and opens truly fullscreen inside nested navigator setups such as `go_router` shells.
-- Fixed dialog selection dismissal so it closes the dialog route instead of popping the underlying page.
-- Improved dialog overlay layout constraints and route teardown stability.
+- Fixed dialog sizing so overlay content shrink-wraps more naturally.
+- Fixed overlay `maxSuggestions` wiring for dialog and fullscreen modes.
+- Documented and enforced Google Autocomplete's effective five-suggestion limit.
+- Corrected the Powered by Google asset theme mapping.
 
-## 0.3.0 - 2026-04-15
+## 0.3.1 - 2026-04-16
 
-- Added typed address support through `PlacePostalAddress` and `PlaceAddressComponent`.
-- Added `PlaceField.postalAddress` and included typed address data in the rich field preset.
-- Added convenience getters on `PlaceData` for common address parts such as route, street number, locality, administrative area, postal code, country, and their short-text variants.
-- Updated the example app and README to demonstrate the new typed address accessors.
+- Fixed fullscreen overlay presentation to use the root navigator inside nested navigation shells.
+- Fixed dialog selection dismissal so it closes the dialog instead of popping the underlying route.
+- Improved dialog overlay teardown stability.
 
-## 0.2.0 - 2026-04-15
+## 0.3.0 - 2026-04-16
 
-- Added Google Time Zone API support through `PlacesClient` and widget selection enrichment.
-- Added standalone place-id and time-zone fetch helpers for non-widget flows.
-- Extended `PlaceSelection` to optionally include resolved time-zone data.
-- Updated the example app and README to cover the new place and time-zone APIs.
+- Added typed `postalAddress` and `addressComponents` support.
+- Added typed long-form and short-form address convenience getters on `PlaceData`.
 
-## 0.1.0 - 2026-04-14
+## 0.2.0 - 2026-04-16
 
-- Initial clean-break release built on Places API (New).
-- Added custom Flutter autocomplete widgets with package-owned models.
-- Added web support through Google Maps JavaScript Places data APIs.
-- Added a multi-platform example app with modern iOS `UIScene` lifecycle.
+- Added Google Time Zone API support.
+- Added standalone place fetching by place ID and standalone time-zone fetching APIs.
+- Added selection enrichment with timezone data across widgets.
+
+## 0.1.0 - 2026-04-16
+
+- Initial clean-break rebuild on Places API (New).
+- Added cross-platform client and widget support for Android, iOS, web, macOS, Windows, and Linux.
+- Added inline, dialog, and fullscreen autocomplete experiences.
