@@ -13,7 +13,16 @@ import 'places_strings.dart';
 /// - [inline]: a regular editable text field with inline suggestions.
 /// - [dialog]: a read-only launcher field that opens dialog search UI.
 /// - [fullscreen]: a read-only launcher field that opens fullscreen search UI.
-enum PlacesAutocompleteFieldMode { inline, dialog, fullscreen }
+enum PlacesAutocompleteFieldMode {
+  /// Shows an editable text field with inline suggestions below it.
+  inline,
+
+  /// Shows a read-only launcher field that opens dialog search UI.
+  dialog,
+
+  /// Shows a read-only launcher field that opens fullscreen search UI.
+  fullscreen,
+}
 
 /// A cross-platform Google Places autocomplete field built on Places API (New).
 ///
@@ -34,6 +43,7 @@ enum PlacesAutocompleteFieldMode { inline, dialog, fullscreen }
 /// )
 /// ```
 class PlacesAutocompleteField extends StatefulWidget {
+  /// Creates a Places autocomplete field or launcher.
   const PlacesAutocompleteField({
     super.key,
     required this.client,
@@ -65,9 +75,16 @@ class PlacesAutocompleteField extends StatefulWidget {
     this.suggestionBuilder,
   });
 
+  /// Client used for autocomplete, place-details, and optional time-zone calls.
   final PlacesClient client;
+
+  /// Optional external controller for coordinating text, focus, and selection.
   final PlacesAutocompleteController? controller;
+
+  /// Optional base decoration for the text field UI.
   final InputDecoration? decoration;
+
+  /// Localized strings used by the field and its overlays.
   final PlacesStrings strings;
 
   /// Preferred BCP-47 language code for results, such as `'en'` or `'he'`.
@@ -75,7 +92,11 @@ class PlacesAutocompleteField extends StatefulWidget {
 
   /// Preferred CLDR region code for results, such as `'us'` or `'il'`.
   final String? regionCode;
+
+  /// Soft geographic preference applied to autocomplete results.
   final LocationBias? locationBias;
+
+  /// Hard geographic restriction applied to autocomplete results.
   final LocationRestriction? locationRestriction;
 
   /// Restricts autocomplete results to places whose primary type matches one
@@ -115,7 +136,11 @@ class PlacesAutocompleteField extends StatefulWidget {
   /// ensure that [PlaceField.location] is included even if it is not present
   /// here.
   final Set<PlaceField> selectionFields;
+
+  /// Preferred BCP-47 language code for the follow-up place-details request.
   final String? selectionLanguageCode;
+
+  /// Preferred CLDR region code for the follow-up place-details request.
   final String? selectionRegionCode;
 
   /// Timestamp to use for the time-zone lookup.
@@ -130,8 +155,14 @@ class PlacesAutocompleteField extends StatefulWidget {
   /// How the field should behave: inline search, dialog launcher, or
   /// fullscreen launcher.
   final PlacesAutocompleteFieldMode fieldMode;
+
+  /// Called when the user selects a suggestion or resolved place.
   final ValueChanged<PlaceSelection>? onSelection;
+
+  /// Called after the field's clear action is pressed.
   final VoidCallback? onClearField;
+
+  /// Called when autocomplete, place-details, or time-zone loading fails.
   final ValueChanged<Object>? onError;
 
   /// Maximum number of autocomplete suggestions to display.
@@ -142,9 +173,17 @@ class PlacesAutocompleteField extends StatefulWidget {
   /// Official reference:
   /// https://developers.google.com/maps/documentation/places/web-service/place-autocomplete
   final int maxSuggestions;
+
+  /// Whether the field can be interacted with.
   final bool enabled;
+
+  /// Whether the field should request focus automatically.
   final bool autofocus;
+
+  /// Whether the Powered by Google attribution should be shown.
   final bool showPoweredByGoogle;
+
+  /// Optional builder for rendering custom suggestion tiles.
   final Widget Function(BuildContext context, PlaceSuggestion suggestion)?
   suggestionBuilder;
 

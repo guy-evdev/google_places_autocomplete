@@ -7,13 +7,20 @@ import 'places_autocomplete_field.dart';
 import 'places_strings.dart';
 
 /// Presentation mode for [PlacesAutocompleteOverlay].
-enum PlacesAutocompleteOverlayMode { dialog, fullscreen }
+enum PlacesAutocompleteOverlayMode {
+  /// Presents the autocomplete UI inside a dialog route.
+  dialog,
+
+  /// Presents the autocomplete UI as a fullscreen route.
+  fullscreen,
+}
 
 /// Standalone autocomplete search surface shown as a dialog or fullscreen route.
 ///
 /// This wraps [PlacesAutocompleteField] and is useful when the search UI should
 /// live in a dedicated route instead of inline.
 class PlacesAutocompleteOverlay extends StatelessWidget {
+  /// Creates a standalone autocomplete overlay.
   const PlacesAutocompleteOverlay({
     super.key,
     required this.client,
@@ -51,10 +58,20 @@ class PlacesAutocompleteOverlay extends StatelessWidget {
 
   /// Optional title shown above the overlay field.
   final String? title;
+
+  /// Localized strings used by the overlay UI.
   final PlacesStrings strings;
+
+  /// Preferred BCP-47 language code for autocomplete results.
   final String? languageCode;
+
+  /// Preferred CLDR region code for autocomplete results.
   final String? regionCode;
+
+  /// Soft geographic preference applied to autocomplete results.
   final LocationBias? locationBias;
+
+  /// Hard geographic restriction applied to autocomplete results.
   final LocationRestriction? locationRestriction;
 
   /// Restricts autocomplete results to Google primary place types.
@@ -76,8 +93,14 @@ class PlacesAutocompleteOverlay extends StatelessWidget {
 
   /// Field set used when [fetchPlaceDetailsOnSelection] is enabled.
   final Set<PlaceField> selectionFields;
+
+  /// Preferred BCP-47 language code for the follow-up place-details request.
   final String? selectionLanguageCode;
+
+  /// Preferred CLDR region code for the follow-up place-details request.
   final String? selectionRegionCode;
+
+  /// Timestamp to use for the optional time-zone lookup.
   final DateTime? selectionTimeZoneAt;
 
   /// Optional BCP-47 language code for localized time-zone names.
@@ -93,7 +116,7 @@ class PlacesAutocompleteOverlay extends StatelessWidget {
   /// details.
   final ValueChanged<PlaceSelection>? onSelection;
 
-  /// Called when autocomplete or place-details loading fails.
+  /// Called when autocomplete, place-details, or time-zone loading fails.
   final ValueChanged<Object>? onError;
 
   /// Opens a Places autocomplete overlay and returns the user’s selection.

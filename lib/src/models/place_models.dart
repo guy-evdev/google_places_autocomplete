@@ -6,10 +6,16 @@ import 'package:flutter/foundation.dart';
 @immutable
 /// Exception thrown for invalid requests or Places API failures.
 class PlacesException implements Exception {
+  /// Creates an exception representing a request validation or API failure.
   const PlacesException(this.message, {this.statusCode, this.details});
 
+  /// Human-readable description of the failure.
   final String message;
+
+  /// Optional HTTP status code when the error came from a network request.
   final int? statusCode;
+
+  /// Optional structured details returned by Google.
   final Object? details;
 
   @override
@@ -25,10 +31,13 @@ class PlacesException implements Exception {
 /// Official reference:
 /// https://developers.google.com/maps/documentation/places/web-service/place-session-tokens
 class AutocompleteSessionToken {
+  /// Creates a session token from an already-generated token value.
   const AutocompleteSessionToken._(this.value);
 
+  /// Raw token value sent to Google.
   final String value;
 
+  /// Generates a new random session token.
   factory AutocompleteSessionToken.generate() {
     final random = Random.secure();
     final buffer = StringBuffer();
@@ -38,6 +47,7 @@ class AutocompleteSessionToken {
     return AutocompleteSessionToken._(buffer.toString());
   }
 
+  /// Rehydrates a session token from an existing raw value.
   factory AutocompleteSessionToken.fromValue(String value) =>
       AutocompleteSessionToken._(value);
 
@@ -48,21 +58,28 @@ class AutocompleteSessionToken {
 @immutable
 /// Latitude/longitude pair used in places requests and responses.
 class PlaceCoordinates {
+  /// Creates a geographic coordinate pair.
   const PlaceCoordinates({required this.latitude, required this.longitude});
 
+  /// Latitude in decimal degrees.
   final double latitude;
+
+  /// Longitude in decimal degrees.
   final double longitude;
 
+  /// Serializes coordinates using the Places HTTP API field names.
   Map<String, Object?> toJson() => <String, Object?>{
     'latitude': latitude,
     'longitude': longitude,
   };
 
+  /// Serializes coordinates using the Maps JavaScript API field names.
   Map<String, Object?> toWebJson() => <String, Object?>{
     'lat': latitude,
     'lng': longitude,
   };
 
+  /// Parses coordinates from either HTTP or Maps JavaScript payloads.
   factory PlaceCoordinates.fromJson(Map<String, Object?> json) {
     return PlaceCoordinates(
       latitude: _toDouble(json['latitude'] ?? json['lat']) ?? 0,
@@ -74,11 +91,16 @@ class PlaceCoordinates {
 @immutable
 /// Geographic viewport returned by Google for a place.
 class PlaceViewport {
+  /// Creates a rectangular viewport for a place.
   const PlaceViewport({required this.northeast, required this.southwest});
 
+  /// Northeast corner of the viewport.
   final PlaceCoordinates northeast;
+
+  /// Southwest corner of the viewport.
   final PlaceCoordinates southwest;
 
+  /// Serializes the viewport to a JSON-compatible map.
   Map<String, Object?> toJson() => <String, Object?>{
     'northeast': northeast.toJson(),
     'southwest': southwest.toJson(),
@@ -88,19 +110,26 @@ class PlaceViewport {
 @immutable
 /// Base type for circle and rectangle location constraints.
 sealed class PlacesArea {
+  /// Base constructor for a geographic bias or restriction area.
   const PlacesArea();
 
+  /// Serializes the area for Places HTTP API requests.
   Map<String, Object?> toRestJson();
 
+  /// Serializes the area for Maps JavaScript API requests.
   Map<String, Object?> toWebJson();
 }
 
 @immutable
 /// Circular location constraint or bias.
 class CircleArea extends PlacesArea {
+  /// Creates a circular bias or restriction area.
   const CircleArea({required this.center, required this.radiusMeters});
 
+  /// Center of the circle.
   final PlaceCoordinates center;
+
+  /// Circle radius in meters.
   final double radiusMeters;
 
   @override
@@ -121,9 +150,13 @@ class CircleArea extends PlacesArea {
 @immutable
 /// Rectangular location constraint or bias.
 class RectangleArea extends PlacesArea {
+  /// Creates a rectangular bias or restriction area.
   const RectangleArea({required this.low, required this.high});
 
+  /// Lower-left / southwest coordinate.
   final PlaceCoordinates low;
+
+  /// Upper-right / northeast coordinate.
   final PlaceCoordinates high;
 
   @override
@@ -149,15 +182,19 @@ class RectangleArea extends PlacesArea {
 /// Official reference:
 /// https://developers.google.com/maps/documentation/places/web-service/place-autocomplete#locationBias
 class LocationBias {
+  /// Creates a location bias from a concrete [PlacesArea].
   const LocationBias._(this.area);
 
+  /// Area used to bias, but not strictly limit, results.
   final PlacesArea area;
 
+  /// Creates a circular location bias.
   factory LocationBias.circle({
     required PlaceCoordinates center,
     required double radiusMeters,
   }) => LocationBias._(CircleArea(center: center, radiusMeters: radiusMeters));
 
+  /// Creates a rectangular location bias.
   factory LocationBias.rectangle({
     required PlaceCoordinates low,
     required PlaceCoordinates high,
@@ -172,10 +209,13 @@ class LocationBias {
 /// Official reference:
 /// https://developers.google.com/maps/documentation/places/web-service/place-autocomplete#locationRestriction
 class LocationRestriction {
+  /// Creates a location restriction from a concrete [PlacesArea].
   const LocationRestriction._(this.area);
 
+  /// Area used to strictly restrict results.
   final PlacesArea area;
 
+  /// Creates a circular location restriction.
   factory LocationRestriction.circle({
     required PlaceCoordinates center,
     required double radiusMeters,
@@ -183,6 +223,7 @@ class LocationRestriction {
     CircleArea(center: center, radiusMeters: radiusMeters),
   );
 
+  /// Creates a rectangular location restriction.
   factory LocationRestriction.rectangle({
     required PlaceCoordinates low,
     required PlaceCoordinates high,
@@ -322,6 +363,7 @@ enum SearchByTextRankPreference {
 
   const SearchByTextRankPreference(this.restName);
 
+  /// Raw enum value expected by the Places text search API.
   final String restName;
 }
 
@@ -332,15 +374,20 @@ enum SearchNearbyRankPreference {
 
   const SearchNearbyRankPreference(this.restName);
 
+  /// Raw enum value expected by the Places nearby search API.
   final String restName;
 }
 
 @immutable
 /// Text value returned by Google with an optional language code.
 class LocalizedText {
+  /// Creates a localized text value.
   const LocalizedText({required this.text, this.languageCode});
 
+  /// Text content returned by Google.
   final String text;
+
+  /// Optional BCP-47 language code for [text].
   final String? languageCode;
 
   factory LocalizedText.fromJson(Object? source) {
@@ -358,21 +405,29 @@ class LocalizedText {
 @immutable
 /// Match offsets inside a structured text fragment.
 class TextMatch {
+  /// Creates a structured-text match range.
   const TextMatch({required this.startOffset, required this.endOffset});
 
+  /// Inclusive match start offset.
   final int startOffset;
+
+  /// Exclusive match end offset.
   final int endOffset;
 }
 
 @immutable
 /// Text plus match ranges returned by Google structured formatting.
 class StructuredText {
+  /// Creates a structured text fragment with optional highlight ranges.
   const StructuredText({
     required this.text,
     this.matches = const <TextMatch>[],
   });
 
+  /// Text content returned by Google.
   final String text;
+
+  /// Highlight ranges inside [text].
   final List<TextMatch> matches;
 
   factory StructuredText.fromJson(Object? source) {
@@ -569,6 +624,7 @@ class PlaceSelection {
 /// Official reference:
 /// https://developers.google.com/maps/documentation/places/web-service/reference/rest/v1/places#AddressComponent
 class PlaceAddressComponent {
+  /// Creates a structured address component.
   const PlaceAddressComponent({
     required this.longText,
     this.shortText,
@@ -576,9 +632,16 @@ class PlaceAddressComponent {
     this.languageCode,
   });
 
+  /// Full component text, such as `California`.
   final String longText;
+
+  /// Short component text, such as `CA`, when available.
   final String? shortText;
+
+  /// Google address component types for this component.
   final List<String> types;
+
+  /// Optional BCP-47 language code for the component text.
   final String? languageCode;
 
   factory PlaceAddressComponent.fromJson(Map<String, Object?> json) =>
@@ -604,6 +667,7 @@ class PlaceAddressComponent {
 /// Official reference:
 /// https://developers.google.com/maps/documentation/places/web-service/reference/rest/v1/places#PostalAddress
 class PlacePostalAddress {
+  /// Creates a normalized postal-address value.
   const PlacePostalAddress({
     this.revision,
     required this.regionCode,
@@ -618,16 +682,37 @@ class PlacePostalAddress {
     this.organization,
   });
 
+  /// Optional schema revision number.
   final int? revision;
+
+  /// CLDR region code for the address.
   final String regionCode;
+
+  /// Optional BCP-47 language code for the address.
   final String? languageCode;
+
+  /// Postal code for the address.
   final String? postalCode;
+
+  /// Optional sorting code used in some countries.
   final String? sortingCode;
+
+  /// Administrative area such as state or province.
   final String? administrativeArea;
+
+  /// Locality such as city or town.
   final String? locality;
+
+  /// Sublocality such as district or neighborhood.
   final String? sublocality;
+
+  /// Street-address lines.
   final List<String> addressLines;
+
+  /// Named recipients associated with the address.
   final List<String> recipients;
+
+  /// Organization associated with the address.
   final String? organization;
 
   factory PlacePostalAddress.fromJson(Map<String, Object?> json) =>
@@ -653,6 +738,7 @@ class PlacePostalAddress {
 @immutable
 /// Photo metadata returned in rich place details.
 class PlacePhoto {
+  /// Creates a photo metadata object.
   const PlacePhoto({
     required this.name,
     this.widthPx,
@@ -661,10 +747,19 @@ class PlacePhoto {
     this.authorAttributions = const <Map<String, Object?>>[],
   });
 
+  /// Stable Google photo resource name.
   final String name;
+
+  /// Photo width in pixels, when known.
   final int? widthPx;
+
+  /// Photo height in pixels, when known.
   final int? heightPx;
+
+  /// Google Maps URI for the photo, when provided.
   final String? googleMapsUri;
+
+  /// Attribution blocks that should accompany the photo.
   final List<Map<String, Object?>> authorAttributions;
 
   factory PlacePhoto.fromJson(Map<String, Object?> json) => PlacePhoto(
@@ -682,6 +777,7 @@ class PlacePhoto {
 @immutable
 /// Review metadata returned in rich place details.
 class PlaceReview {
+  /// Creates a place review value.
   const PlaceReview({
     required this.authorName,
     required this.text,
@@ -691,11 +787,22 @@ class PlaceReview {
     this.originalText,
   });
 
+  /// Review author display name.
   final String authorName;
+
+  /// Localized review text.
   final LocalizedText text;
+
+  /// Rating value supplied with the review.
   final double? rating;
+
+  /// Relative publish time such as `2 weeks ago`.
   final String? relativePublishTimeDescription;
+
+  /// Google Maps URI for the review or place context.
   final String? googleMapsUri;
+
+  /// Original untranslated review text, when provided.
   final LocalizedText? originalText;
 
   factory PlaceReview.fromJson(Map<String, Object?> json) {
@@ -718,6 +825,7 @@ class PlaceReview {
 @immutable
 /// Rich place details returned by Places API (New).
 class PlaceData {
+  /// Creates a rich place-details object.
   const PlaceData({
     required this.id,
     this.resourceName,
@@ -799,33 +907,89 @@ class PlaceData {
 
   /// Localized display text for the primary type.
   final LocalizedText? primaryTypeDisplayName;
+
+  /// Google Maps URI for this place.
   final String? googleMapsUri;
+
+  /// Website URI for this place, when available.
   final String? websiteUri;
+
+  /// National-format phone number.
   final String? nationalPhoneNumber;
+
+  /// International-format phone number.
   final String? internationalPhoneNumber;
+
+  /// Average user rating.
   final double? rating;
+
+  /// Count of user ratings used in [rating].
   final int? userRatingCount;
+
+  /// Price level returned by Google.
   final String? priceLevel;
+
+  /// Business status returned by Google.
   final String? businessStatus;
+
+  /// Base URI for the place icon mask.
   final String? iconMaskBaseUri;
+
+  /// Background color associated with the place icon.
   final String? iconBackgroundColor;
+
+  /// UTC offset in minutes for the place, when provided by Google.
   final int? utcOffsetMinutes;
+
+  /// Whether delivery is available.
   final bool? delivery;
+
+  /// Whether dine-in is available.
   final bool? dineIn;
+
+  /// Whether takeout is available.
   final bool? takeout;
+
+  /// Whether reservations are supported.
   final bool? reservable;
+
+  /// Whether breakfast is served.
   final bool? servesBreakfast;
+
+  /// Whether lunch is served.
   final bool? servesLunch;
+
+  /// Whether dinner is served.
   final bool? servesDinner;
+
+  /// Whether beer is served.
   final bool? servesBeer;
+
+  /// Whether wine is served.
   final bool? servesWine;
+
+  /// Whether dessert is served.
   final bool? servesDessert;
+
+  /// Whether coffee is served.
   final bool? servesCoffee;
+
+  /// Whether outdoor seating is available.
   final bool? outdoorSeating;
+
+  /// Whether restrooms are available.
   final bool? restroom;
+
+  /// Whether the place is good for children.
   final bool? goodForChildren;
+
+  /// Whether the place is good for groups.
   final bool? goodForGroups;
+
+  /// Current opening-hours payload returned by Google.
   final Map<String, Object?>? currentOpeningHours;
+
+  /// Regular opening-hours payload returned by Google.
   final Map<String, Object?>? regularOpeningHours;
 
   /// Reviews returned when review fields are requested.
@@ -987,6 +1151,7 @@ class PlaceData {
 /// https://developers.google.com/maps/documentation/places/web-service/place-autocomplete
 @immutable
 class AutocompleteRequest {
+  /// Creates a Places autocomplete request.
   const AutocompleteRequest({
     required this.input,
     this.sessionToken,
@@ -1001,13 +1166,28 @@ class AutocompleteRequest {
     this.includePureServiceAreaBusinesses = false,
   });
 
+  /// User-entered search text.
   final String input;
+
+  /// Optional session token reused across autocomplete and details calls.
   final AutocompleteSessionToken? sessionToken;
+
+  /// Preferred BCP-47 language code for returned suggestions.
   final String? languageCode;
+
+  /// Preferred CLDR region code for returned suggestions.
   final String? regionCode;
+
+  /// Cursor position inside [input], when available.
   final int? inputOffset;
+
+  /// Origin used for distance calculations.
   final PlaceCoordinates? origin;
+
+  /// Soft geographic preference for suggestions.
   final LocationBias? locationBias;
+
+  /// Hard geographic restriction for suggestions.
   final LocationRestriction? locationRestriction;
 
   /// Restricts autocomplete results to places whose primary type matches one
@@ -1042,6 +1222,7 @@ class AutocompleteRequest {
   /// Whether pure service-area businesses should be included in results.
   final bool includePureServiceAreaBusinesses;
 
+  /// Validates request invariants before serialization.
   void validate() {
     if (input.trim().isEmpty) {
       throw const PlacesException('Autocomplete input cannot be empty.');
@@ -1053,6 +1234,7 @@ class AutocompleteRequest {
     }
   }
 
+  /// Serializes the request for the Places HTTP autocomplete endpoint.
   Map<String, Object?> toRestJson() {
     validate();
     return <String, Object?>{
@@ -1077,6 +1259,7 @@ class AutocompleteRequest {
 @immutable
 /// Request payload for Place Details (New).
 class PlaceDetailsRequest {
+  /// Creates a Place Details request.
   const PlaceDetailsRequest({
     required this.placeId,
     this.fields = PlaceFieldPresets.recommended,
@@ -1155,6 +1338,7 @@ class TimeZoneRequest {
 @immutable
 /// Request payload for Text Search (New).
 class TextSearchRequest {
+  /// Creates a text-search request.
   const TextSearchRequest({
     required this.textQuery,
     this.fields = PlaceFieldPresets.recommended,
@@ -1187,11 +1371,23 @@ class TextSearchRequest {
 
   /// Whether [includedType] should be applied strictly.
   final bool strictTypeFiltering;
+
+  /// Soft geographic preference applied to the search.
   final LocationBias? locationBias;
+
+  /// Hard geographic restriction applied to the search.
   final LocationRestriction? locationRestriction;
+
+  /// Maximum number of results requested from Google.
   final int? maxResultCount;
+
+  /// Minimum acceptable average rating.
   final double? minRating;
+
+  /// Whether only currently open places should be returned.
   final bool? openNow;
+
+  /// Ranking behavior for text-search results.
   final SearchByTextRankPreference rankPreference;
 
   /// Validates request invariants before serialization.
@@ -1235,6 +1431,7 @@ class TextSearchRequest {
 @immutable
 /// Request payload for Nearby Search (New).
 class NearbySearchRequest {
+  /// Creates a nearby-search request.
   const NearbySearchRequest({
     required this.locationRestriction,
     this.fields = PlaceFieldPresets.recommended,
@@ -1282,6 +1479,7 @@ class NearbySearchRequest {
   String get searchFieldMask =>
       fields.map((field) => field.searchMaskPath).join(',');
 
+  /// Serializes the request for the Places nearby-search endpoint.
   Map<String, Object?> toRestJson() => <String, Object?>{
     'locationRestriction': locationRestriction.area.toRestJson(),
     if (languageCode != null) 'languageCode': languageCode,

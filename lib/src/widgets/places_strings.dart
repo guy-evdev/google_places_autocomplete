@@ -14,6 +14,7 @@ import 'package:flutter/widgets.dart';
 /// ```
 @immutable
 class PlacesStrings {
+  /// Creates a bundle of UI strings for the autocomplete widgets.
   const PlacesStrings({
     this.searchHint = 'Search places',
     this.loadingText = 'Loading places…',
@@ -26,15 +27,28 @@ class PlacesStrings {
     this.clearLabel = 'Clear search',
   });
 
+  /// Placeholder text shown in the search field.
   final String searchHint;
+
+  /// Text shown while suggestions are loading.
   final String loadingText;
+
+  /// Text shown when no matching suggestions are returned.
   final String noResultsText;
+
+  /// Generic error text shown when a request fails.
   final String errorText;
+
+  /// Label used for retry actions in error states.
   final String retryText;
 
   /// Accessibility label used for the Google attribution image.
   final String poweredByGoogleLabel;
+
+  /// Title shown at the top of dialog and fullscreen overlays.
   final String overlayTitle;
+
+  /// Accessibility label used for closing overlay routes.
   final String closeLabel;
 
   /// Tooltip/semantic label for the field clear button.

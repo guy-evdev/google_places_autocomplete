@@ -17,6 +17,7 @@ import 'models/place_models.dart';
 /// );
 /// ```
 class PlacesClient {
+  /// Creates a production client that talks to Google Places services.
   PlacesClient({
     required this.apiKey,
     this.proxyBaseUrl,
@@ -29,6 +30,7 @@ class PlacesClient {
          httpClient: httpClient,
        );
 
+  /// Creates a client wired to a custom backend for tests.
   PlacesClient.testing({
     required this.apiKey,
     required PlacesBackend backend,
@@ -36,8 +38,13 @@ class PlacesClient {
     this.timeZoneBaseUrl,
   }) : _backend = backend;
 
+  /// Google Maps Platform API key used for Places and Time Zone requests.
   final String apiKey;
+
+  /// Optional proxy base URL for Places HTTP requests on supported platforms.
   final String? proxyBaseUrl;
+
+  /// Optional override for the Time Zone API base URL.
   final String? timeZoneBaseUrl;
   final PlacesBackend _backend;
 
